@@ -1,0 +1,263 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>RiberCozi Orçamentos</title>
+    <link rel="apple-touch-icon" sizes="180x180" href="/static/apple-touch-icon.png">
+    <link rel="icon" type="image/png" sizes="32x32" href="/static/favicon-32x32.png">
+    <link rel="icon" type="image/png" sizes="16x16" href="/static/favicon-16x16.png">
+    <link rel="manifest" href="/static/site.webmanifest">
+    <link rel="stylesheet" href="/static/styles.css">
+</head>
+<body>
+    <header class="headerabout">
+        <div class="logo-about">
+            <img alt="" src="/static/images/logo2.png" style="margin-top: -15px;width: 100px; height: auto;">
+            <h1 style="font-size: 50px; height: auto; position: fixed;margin-left: 140px;margin-top: 10px;">Orçamentos RiberCozi</h1>
+        </div>
+        <nav class="list1" style="margin-top: -60px;">
+            <ul>
+                <li><a href="/">Home</a></li>
+                <li><a href="/atualizar.html">Atualizar Base de Dados</a></li>
+            </ul>
+        </nav>
+    </header>
+
+    <main>
+        <h2>Calcular Orçamento de Móveis</h2>
+        <button id="adicionar-moveis-btn" style="margin-top: 40px;">Calcular orçamento</button>
+        <div id="moveis-section" style="display:none;">
+            <button class="movel-btn" data-tipo="coluna">Coluna</button>
+            <button class="movel-btn" data-tipo="inferior">Inferior</button>
+            <button class="movel-btn" data-tipo="superior">Superior</button>
+            <button class="movel-btn" data-tipo="piso">Piso</button>
+            <button class="movel-btn" data-tipo="tampo">Tampo</button>
+            <button class="movel-btn" data-tipo="remate">Remate</button>
+            <button class="movel-btn" data-tipo="placa">Placa</button>
+            <button class="movel-btn" data-tipo="painel">Painel</button>
+        </div>
+
+        <div id="form-section" style="display:none;">
+            <form id="orcamento-form">
+                <input type="hidden" id="tipo_movel" name="tipo_movel">
+                <label for="codigo_material">Código do Material:</label>
+                <input type="text" id="codigo_material" name="codigo_material" required><br><br>
+                <label for="comprimento">Comprimento:</label>
+                <input type="number" id="comprimento" name="comprimento" required><br><br>
+                <label for="profundidade">Profundidade:</label>
+                <input type="number" id="profundidade" name="profundidade" required><br><br>
+                <label for="altura">Altura:</label>
+                <input type="number" id="altura" name="altura" required><br><br>
+                <div id="extra-fields"></div>
+                <input type="submit" value="Adicionar">
+            </form>
+        </div>
+
+        <div id="resultado-section" style="display:none;">
+            <h3>Móveis Adicionados:</h3>
+            <ul id="moveis-lista"></ul>
+            <h3 id="custo-total">Custo Total: 0€</h3>
+            <button id="calcular-total-btn">Calcular Total</button>
+        </div>
+
+        <!-- Botão para mostrar tabelas -->
+        <button onclick="listTables()" style="margin-top: 20px;">Mostrar Tabelas</button>
+        <div id="tables" class="tables-container"></div>
+    </main>
+
+    <script>
+        document.getElementById('adicionar-moveis-btn').addEventListener('click', function() {
+            document.getElementById('moveis-section').style.display = 'block';
+        });
+
+        document.querySelectorAll('.movel-btn').forEach(button => {
+            button.addEventListener('click', function() {
+                const tipoMovel = this.getAttribute('data-tipo');
+                document.getElementById('tipo_movel').value = tipoMovel;
+                document.getElementById('extra-fields').innerHTML = '';
+
+                if (tipoMovel === 'coluna' || tipoMovel === 'inferior' || tipoMovel === 'superior') {
+                    document.getElementById('extra-fields').innerHTML = `
+                        <label for="codigo_material_orla">Código do Material de Orla:</label>
+                        <input type="text" id="codigo_material_orla" name="codigo_material_orla" required><br><br>
+                        <label for="portas">Número de Portas:</label>
+                        <input type="number" id="portas" name="portas" required><br><br>
+                        <label for="gavetas">Número de Gavetas:</label>
+                        <input type="number" id="gavetas" name="gavetas" required><br><br>
+                        <label for="gavetoes">Número de Gavetões:</label>
+                        <input type="number" id="gavetoes" name="gavetoes" required><br><br>
+                        <label for="prateleiras">Número de Prateleiras:</label>
+                        <input type="number" id="prateleiras" name="prateleiras" required><br><br>
+                    `;
+                } else if (tipoMovel === 'piso' || tipoMovel === 'tampo' || tipoMovel === 'remate' || tipoMovel === 'placa' || tipoMovel === 'painel') {
+                    document.getElementById('extra-fields').innerHTML = `
+                        <label for="nome_material">Nome do Material:</label>
+                        <input type="text" id="nome_material" name="nome_material" required><br><br>
+                    `;
+                }
+
+                document.getElementById('form-section').style.display = 'block';
+            });
+        });
+
+        let moveisAdicionados = [];
+        let custoTotal = 0;
+
+        document.getElementById('orcamento-form').addEventListener('submit', function(event) {
+            event.preventDefault();
+
+            const tipoMovel = document.getElementById('tipo_movel').value;
+            const codigoMaterial = document.getElementById('codigo_material').value;
+            const comprimento = document.getElementById('comprimento').value;
+            const profundidade = document.getElementById('profundidade').value;
+            const altura = document.getElementById('altura').value;
+            const dimensoes = [comprimento, profundidade, altura];
+            let movel = { tipo: tipoMovel, codigo: codigoMaterial, dimensoes: dimensoes };
+
+            if (tipoMovel === 'coluna' || tipoMovel === 'inferior' || tipoMovel === 'superior') {
+                movel.codigo_orla = document.getElementById('codigo_material_orla').value;
+                movel.portas = document.getElementById('portas').value;
+                movel.gavetas = document.getElementById('gavetas').value;
+                movel.gavetoes = document.getElementById('gavetoes').value;
+                movel.prateleiras = document.getElementById('prateleiras').value;
+            } else if (tipoMovel === 'piso' || tipoMovel === 'tampo' || tipoMovel === 'remate' || tipoMovel === 'placa' || tipoMovel === 'painel') {
+                movel.nome_material = document.getElementById('nome_material').value;
+            }
+
+            moveisAdicionados.push(movel);
+            atualizarListaMoveis();
+            document.getElementById('orcamento-form').reset();
+        });
+
+        function removeMovel(index) {
+            moveisAdicionados.splice(index, 1); // Remove o móvel da lista
+            atualizarListaMoveis(); // Atualiza a lista exibida
+        }
+
+        function atualizarListaMoveis() {
+            const lista = document.getElementById('moveis-lista');
+            lista.innerHTML = '';
+            moveisAdicionados.forEach((movel, index) => {
+                const item = document.createElement('li');
+                
+                // Botão de exclusão
+                const deleteButton = document.createElement('button');
+                deleteButton.textContent = 'X';
+                deleteButton.classList.add('delete-btn');
+                deleteButton.addEventListener('click', () => removeMovel(index));
+
+                // Expansor de detalhes
+                const expander = document.createElement('button');
+                expander.textContent = '▶'; // Set initial arrow
+                expander.classList.add('expander');
+                expander.addEventListener('click', () => toggleDetails(index, expander));
+
+                // Nome do móvel
+                const nomeMovel = document.createElement('span');
+                nomeMovel.textContent = `${movel.tipo} - ${movel.codigo}`;
+                nomeMovel.style.marginRight = '10px';
+
+                // Detalhes do móvel
+                const detalhes = document.createElement('div');
+                detalhes.classList.add('detalhes');
+                detalhes.style.display = 'none';
+                detalhes.innerHTML = generateMovelDetails(movel);
+
+                // Adiciona o botão de exclusão, expansor, nome e detalhes ao item da lista
+                item.appendChild(deleteButton);
+                item.appendChild(expander);
+                item.appendChild(nomeMovel);
+                item.appendChild(detalhes);
+
+                lista.appendChild(item);
+            });
+            document.getElementById('resultado-section').style.display = 'block';
+        }
+
+
+        function generateMovelDetails(movel) {
+            let detalhesHTML = '';
+            detalhesHTML += `<p>Dimensões: ${movel.dimensoes.join(' x ')}</p>`;
+            if (movel.codigo_orla) detalhesHTML += `<p>Código do Material de Orla: ${movel.codigo_orla}</p>`;
+            if (movel.portas) detalhesHTML += `<p>Número de Portas: ${movel.portas}</p>`;
+            if (movel.gavetas) detalhesHTML += `<p>Número de Gavetas: ${movel.gavetas}</p>`;
+            if (movel.gavetoes) detalhesHTML += `<p>Número de Gavetões: ${movel.gavetoes}</p>`;
+            if (movel.prateleiras) detalhesHTML += `<p>Número de Prateleiras: ${movel.prateleiras}</p>`;
+            if (movel.nome_material) detalhesHTML += `<p>Nome do Material: ${movel.nome_material}</p>`;
+            return detalhesHTML;
+        }
+
+        function toggleDetails(index, expander) {
+            const detalhes = document.querySelectorAll('.detalhes')[index];
+            const isVisible = detalhes.style.display === 'block';
+            detalhes.style.display = isVisible ? 'none' : 'block';
+            expander.textContent = isVisible ? '▶' : '▼'; // Toggle arrow
+        }
+
+        document.getElementById('calcular-total-btn').addEventListener('click', function() {
+            fetch('/calcular_orcamento', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({ moveis: moveisAdicionados }) // Alterado para incluir a chave 'moveis'
+            })
+            .then(response => response.json())
+            .then(data => {
+                custoTotal = data.custo_total;
+                document.getElementById('custo-total').innerText = `Custo Total: ${custoTotal.toFixed(2)}€`;
+            })
+            .catch(error => {
+                console.error('Error:', error);
+            });
+        });
+
+
+        function listTables() {
+            fetch('/list_tables')
+                .then(response => response.json())
+                .then(data => {
+                    const tablesDiv = document.getElementById('tables');
+                    tablesDiv.innerHTML = '';
+                    data.forEach(table => {
+                        const tableName = table[0];
+                        const tableButton = document.createElement('button');
+                        tableButton.innerText = tableName;
+                        tableButton.onclick = () => showTable(tableName);
+                        tablesDiv.appendChild(tableButton);
+                        tablesDiv.appendChild(document.createElement('br'));
+                    });
+                });
+        }
+
+        function showTable(tableName) {
+            fetch(`/show_table/${tableName}`)
+                .then(response => response.json())
+                .then(data => {
+                    const tablesDiv = document.getElementById('tables');
+                    let tableHTML = `<h3>${tableName}</h3><table border="1"><tr>`;
+                    if (data.length > 0) {
+                        // Create table headers
+                        Object.keys(data[0]).forEach(key => {
+                            tableHTML += `<th>${key}</th>`;
+                        });
+                        tableHTML += '</tr>';
+                        // Create table rows
+                        data.forEach(row => {
+                            tableHTML += '<tr>';
+                            Object.values(row).forEach(value => {
+                                tableHTML += `<td>${value}</td>`;
+                            });
+                            tableHTML += '</tr>';
+                        });
+                    } else {
+                        tableHTML += '<tr><td>Empty table</td></tr>';
+                    }
+                    tableHTML += '</table>';
+                    tablesDiv.innerHTML = tableHTML;
+                });
+        }
+    </script>
+</body>
+</html>
