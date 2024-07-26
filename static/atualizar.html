@@ -1,0 +1,186 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>RiberCozi Orçamentos</title>
+    <link rel="apple-touch-icon" sizes="180x180" href="/static/apple-touch-icon.png">
+    <link rel="icon" type="image/png" sizes="32x32" href="/static/favicon-32x32.png">
+    <link rel="icon" type="image/png" sizes="16x16" href="/static/favicon-16x16.png">
+    <link rel="manifest" href="/static/site.webmanifest">
+    <link rel="stylesheet" href="../static/styles.css"> <!-- Link to your CSS file -->
+</head>
+<body>
+    <header class="headerabout">
+        <div class="logo-about">
+            <img alt="" src="../static/images/logo2.png" style="margin-top: -15px;width: 100px; height: auto;">
+            <h1 style="font-size: 50px; height: auto; position: fixed;margin-left: 140px;margin-top: 10px;">Orçamentos RiberCozi</h1>
+        </div>
+        <nav class="list1" style="margin-top: -60px;">
+            <ul>
+                <li><a href="/">Home</a></li>
+                <li><a href="/atualizar.html">Atualizar Base de Dados</a></li>
+            </ul>
+        </nav>
+    </header>
+
+    <main>
+        <h2>Atualizar Base de Dados</h2>
+        <form id="update-form" method="post" action="/atualizar">
+            <label for="action">Ação:</label>
+            <select id="action" name="action" required>
+                <option value="update">Atualizar</option>
+                <option value="insert">Inserir</option>
+                <option value="delete">Excluir</option>
+            </select><br><br>
+
+            <label for="table">Nome da Tabela:</label>
+            <input type="text" id="table" name="table" required><br><br>
+
+            <div id="update-fields" class="action-fields">
+                <label for="update-id">ID da Linha:</label>
+                <input type="text" id="update-id" name="id"><br><br>
+
+                <label for="update-attribute">Nome do Atributo:</label>
+                <input type="text" id="update-attribute" name="attribute"><br><br>
+
+                <label for="update-value">Novo Valor:</label>
+                <input type="text" id="update-value" name="value"><br><br>
+            </div>
+
+            <div id="insert-fields" class="action-fields" style="display: none;">
+                <input type="hidden" id="insert-columns" name="columns">
+                <div id="insert-columns-values">
+                    <!-- Inputs serão gerados dinamicamente aqui -->
+                </div>
+            </div>
+
+            <div id="delete-fields" class="action-fields" style="display: none;">
+                <label for="delete-id">ID da Linha:</label>
+                <input type="text" id="delete-id" name="id"><br><br>
+            </div>
+
+            <input type="submit" value="Executar">
+        </form>
+        
+        <button onclick="listTables()">Mostrar Tabelas</button>
+        <div id="tables" class="tables-container"></div>
+    </main>
+
+    <script>
+        document.getElementById('action').addEventListener('change', function() {
+            var action = this.value;
+            var fields = document.getElementsByClassName('action-fields');
+            for (var i = 0; i < fields.length; i++) {
+                fields[i].style.display = 'none';
+            }
+            if (action === 'update') {
+                document.getElementById('update-fields').style.display = 'block';
+                document.getElementById('update-form').method = 'post';
+            } else if (action === 'insert') {
+                document.getElementById('insert-fields').style.display = 'block';
+                document.getElementById('update-form').method = 'post';
+                fetchColumns();
+            } else if (action === 'delete') {
+                document.getElementById('delete-fields').style.display = 'block';
+                document.getElementById('update-form').method = 'post';
+            }
+        });
+
+        function listTables() {
+            fetch('/list_tables')
+                .then(response => response.json())
+                .then(data => {
+                    const tablesDiv = document.getElementById('tables');
+                    tablesDiv.innerHTML = '';
+                    data.forEach(table => {
+                        const tableName = table[0];
+                        const tableButton = document.createElement('button');
+                        tableButton.innerText = tableName;
+                        tableButton.onclick = () => showTable(tableName);
+                        tablesDiv.appendChild(tableButton);
+                        tablesDiv.appendChild(document.createElement('br'));
+                    });
+                });
+        }
+
+        function showTable(tableName) {
+            fetch(`/show_table/${tableName}`)
+                .then(response => response.json())
+                .then(data => {
+                    const tablesDiv = document.getElementById('tables');
+                    let tableHTML = `<h3>${tableName}</h3><table border="1"><tr>`;
+                    if (data.length > 0) {
+                        // Create table headers
+                        Object.keys(data[0]).forEach(key => {
+                            tableHTML += `<th>${key}</th>`;
+                        });
+                        tableHTML += '</tr>';
+                        // Create table rows
+                        data.forEach(row => {
+                            tableHTML += '<tr>';
+                            Object.values(row).forEach(value => {
+                                tableHTML += `<td>${value}</td>`;
+                            });
+                            tableHTML += '</tr>';
+                        });
+                    } else {
+                        tableHTML += '<tr><td>Empty table</td></tr>';
+                    }
+                    tableHTML += '</table>';
+                    tablesDiv.innerHTML = tableHTML;
+                });
+        }
+
+        function fetchColumns() {
+            var table = document.getElementById('table').value;
+            if (table) {
+                fetch(`/get_columns/${table}`)
+                    .then(response => response.json())
+                    .then(columns => {
+                        const columnsValuesDiv = document.getElementById('insert-columns-values');
+                        columnsValuesDiv.innerHTML = '';
+                        document.getElementById('insert-columns').value = columns.join(',');
+                        columns.forEach(column => {
+                            const label = document.createElement('label');
+                            label.for = `insert-value-${column}`;
+                            label.innerText = `${column}:`;
+                            const input = document.createElement('input');
+                            input.type = 'text';
+                            input.id = `insert-value-${column}`;
+                            input.name = 'values';
+                            columnsValuesDiv.appendChild(label);
+                            columnsValuesDiv.appendChild(input);
+                            columnsValuesDiv.appendChild(document.createElement('br'));
+                        });
+                    });
+            } else {
+                alert('Por favor, insira o nome da tabela.');
+            }
+        }
+
+        document.getElementById('update-form').addEventListener('submit', function(event) {
+            var action = document.getElementById('action').value;
+            if (action === 'delete') {
+                event.preventDefault();
+                var table = document.getElementById('table').value;
+                var id = document.getElementById('delete-id').value;
+                fetch('/atualizar/delete', {
+                    method: 'DELETE',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({ table: table, id: id })
+                })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.status === 'success') {
+                        alert('Linha excluída com sucesso');
+                        window.location.reload();
+                    }
+                });
+            }
+        });
+    </script>
+</body>
+</html>
